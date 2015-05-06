@@ -1,0 +1,298 @@
+#!/usr/bin/env bash
+set -e
+
+NAME="Panoptes"
+MAIN_DEBUG_PORT=5858
+RENDER_DEBUG_PORT=8081
+INSPECTOR_PORT=8080
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/.. && pwd )"
+NPM_DIR="${DIR}/node_modules"
+ASSETS_DIR="${DIR}/assets"
+BIN_DIR="${NPM_DIR}/.bin"
+BUILD_DIR="${DIR}/build"
+CACHE_DIR="${DIR}/var/cache"
+DIST_DIR="${DIR}/dist"
+DOC_DIR="${DIR}/docs"
+ETC_DIR="${DIR}/etc"
+EXT_DIR="${DIR}/extensions"
+LOG_DIR="${DIR}/var/log"
+PID_DIR="${DIR}/var/run"
+SRC_DIR="${DIR}"
+
+get_pid() {
+    cat "${PID_DIR}/$1.pid"
+}
+
+is_running() {
+    [ -f "${PID_DIR}/$1.pid" ] && ps `get_pid $1` > /dev/null 2>&1
+}
+
+stop() {
+    for cmd in $@; do
+        if is_running $cmd; then
+            PID=`get_pid $cmd`
+            PID_FILE="${PID_DIR}/$cmd.pid"
+
+            echo -n "Stopping $cmd..."
+            kill ${PID}
+            for i in {1..10}; do
+                if ! is_running $cmd; then
+                    break
+                fi
+                echo -n "."
+                sleep 1
+            done
+
+            if is_running $cmd; then
+                echo "$cmd not stopped. It may still be shutting down or shutdown may have failed."
+            else
+                echo "$cmd stopped."
+                if [ -f "${PID_FILE}" ]; then
+                    rm "${PID_FILE}"
+                fi
+            fi
+        else
+            echo "$cmd not running"
+        fi
+    done
+}
+
+status() {
+    for cmd in $@; do
+        if is_running $cmd; then
+            echo "$cmd running"
+        else
+            echo "$cmd not running"
+        fi
+    done
+}
+
+case "$1" in
+    install)
+        exec 1>"${LOG_DIR}/install.out"
+        exec 2>"${LOG_DIR}/install.err"
+
+        # base
+        mkdir -p "${BUILD_DIR}/scripts" "${BUILD_DIR}/styles"
+
+        pushd "${SRC_DIR}" >/dev/null
+            npm install
+        popd >/dev/null
+
+        pushd "${NPM_DIR}" >/dev/null
+            ln -s ../build/scripts ./scripts
+        popd >/dev/null
+
+        # development
+        git clone --recursive https://github.com/facebook/react-devtools.git "${NPM_DIR}/react-devtools"
+
+        # elasticsearch
+        mkdir -p "${EXT_DIR}"
+        pushd "${EXT_DIR}" >/dev/null
+            # install
+            curl -O "https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.5.1.tar.gz"
+            tar -xzf elasticsearch-1.5.1.tar.gz
+            rm -f elasticsearch-1.5.1.tar.gz
+            mv elasticsearch-1.5.1 elasticsearch
+            elasticsearch/bin/plugin install elasticsearch/elasticsearch-mapper-attachments/2.5.0
+            elasticsearch/bin/plugin install polyfractal/elasticsearch-inquisitor
+            elasticsearch/bin/plugin install royrusso/elasticsearch-HQ
+
+            # start the server
+            echo "Starting elasticsearch..."
+            "${EXT_DIR}/elasticsearch/bin/elasticsearch" -Des.config="${ETC_DIR}/elasticsearch.yml" >"${LOG_DIR}/elasticsearch.out" 2>"${LOG_DIR}/elasticsearch.err" &
+            echo $! > "${PID_DIR}/elasticsearch.pid"
+            sleep 10
+
+            # create initial index and mapping
+            echo "Creating files index..."
+            curl -v -XPOST 'http://localhost:9200/aerofs/' -d '{
+                "mappings": {
+                    "file": {
+                        "_source": {
+                            "excludes": ["file"]
+                        },
+                        "properties": {
+                            "file": {
+                                "type": "attachment",
+                                "path": "full",
+                                "fields": {
+                                    "file": {
+                                        "type": "string",
+                                        "term_vector": "with_positions_offsets",
+                                        "store": true
+                                    }
+                                }
+                            },
+                            "createdAt": { "type": "date", "format" : "dateOptionalTime" },
+                            "modifiedAt": { "type": "date", "format" : "dateOptionalTime" },
+                            "path": { "type": "string" },
+                            "size": { "type": "long" }
+                        }
+                    }
+                }
+            }'
+            echo
+
+            # start indexing files
+            echo "Indexing files..."
+            #"${DIR}/bin/index-files" "$HOME/AeroFS" >"${LOG_DIR}/index.out" 2>"${LOG_DIR}/index.err" &
+            echo $! > "${PID_DIR}/index.pid"
+        popd >/dev/null
+    ;;
+
+    clean)
+        exec 1>"${LOG_DIR}/clean.out"
+        exec 2>"${LOG_DIR}/clean.err"
+
+        stop index elasticsearch
+        rm -rfv "${BUILD_DIR}" "${DIST_DIR}" "${NPM_DIR}" "${EXT_DIR}/elasticsearch"
+    ;;
+
+    package)
+        exec 1>"${LOG_DIR}/package.out"
+        exec 2>"${LOG_DIR}/package.err"
+
+        # reset distribution environment
+        rm -rf "${DIST_DIR}"
+        mkdir -p "${DIST_DIR}/app/build/scripts" "${DIST_DIR}/app/build/styles" "${DIST_DIR}/dmg"
+        EXE="${DIST_DIR}/dmg/${NAME}.app"
+
+        # copy required files
+        cp -R "${NPM_DIR}/electron-prebuilt/dist/Electron.app" "${EXE}"
+        cp -R "${SRC_DIR}/index.html" "${SRC_DIR}/package.json" "${SRC_DIR}/" "${ASSETS_DIR}" "${DIST_DIR}/app"
+        "${BIN_DIR}/uglifyjs" "${BUILD_DIR}/scripts/bundle.js" -c -m -o "${DIST_DIR}/app/build/scripts/bundle.js"
+        cp -R "${BUILD_DIR}/styles" "${DIST_DIR}/app/build/styles"
+
+        # create asar archive
+        rm -rf "${EXE}/Contents/Resources/default_app"
+        "${BIN_DIR}/asar" pack "${DIST_DIR}/app" "${EXE}/Contents/Resources/app.asar"
+
+        # rename executable
+        defaults write "${EXE}/Contents/Frameworks/Electron Helper.app/Contents/Info" "CFBundleDisplayName" -string "${NAME} Helper"
+        defaults write "${EXE}/Contents/Frameworks/Electron Helper.app/Contents/Info" "CFBundleExecutable" -string "${NAME} Helper"
+        defaults write "${EXE}/Contents/Frameworks/Electron Helper.app/Contents/Info" "CFBundleIdentifier" -string "com.aerofs.${NAME}.helper"
+        defaults write "${EXE}/Contents/Frameworks/Electron Helper.app/Contents/Info" "CFBundleName" -string "${NAME} Helper"
+        plutil -convert xml1 "${EXE}/Contents/Frameworks/Electron Helper.app/Contents/Info.plist"
+        mv "${EXE}/Contents/Frameworks/Electron Helper.app/Contents/MacOS/Electron Helper" "${EXE}/Contents/Frameworks/Electron Helper.app/Contents/MacOS/${NAME} Helper"
+        mv "${EXE}/Contents/Frameworks/Electron Helper.app" "${EXE}/Contents/Frameworks/${NAME} Helper.app"
+
+        defaults write "${EXE}/Contents/Frameworks/Electron Helper EH.app/Contents/Info" "CFBundleDisplayName" -string "${NAME} Helper EH"
+        defaults write "${EXE}/Contents/Frameworks/Electron Helper EH.app/Contents/Info" "CFBundleExecutable" -string "${NAME} Helper EH"
+        defaults write "${EXE}/Contents/Frameworks/Electron Helper EH.app/Contents/Info" "CFBundleIdentifier" -string "com.aerofs.${NAME}.helper.EH"
+        defaults write "${EXE}/Contents/Frameworks/Electron Helper EH.app/Contents/Info" "CFBundleName" -string "${NAME} Helper EH"
+        plutil -convert xml1 "${EXE}/Contents/Frameworks/Electron Helper EH.app/Contents/Info.plist"
+        mv "${EXE}/Contents/Frameworks/Electron Helper EH.app/Contents/MacOS/Electron Helper EH" "${EXE}/Contents/Frameworks/Electron Helper EH.app/Contents/MacOS/${NAME} Helper EH"
+        mv "${EXE}/Contents/Frameworks/Electron Helper EH.app" "${EXE}/Contents/Frameworks/${NAME} Helper EH.app"
+
+        defaults write "${EXE}/Contents/Frameworks/Electron Helper NP.app/Contents/Info" "CFBundleDisplayName" -string "${NAME} Helper NP"
+        defaults write "${EXE}/Contents/Frameworks/Electron Helper NP.app/Contents/Info" "CFBundleExecutable" -string "${NAME} Helper NP"
+        defaults write "${EXE}/Contents/Frameworks/Electron Helper NP.app/Contents/Info" "CFBundleIdentifier" -string "com.aerofs.${NAME}.helper.NP"
+        defaults write "${EXE}/Contents/Frameworks/Electron Helper NP.app/Contents/Info" "CFBundleName" -string "${NAME} Helper NP"
+        plutil -convert xml1 "${EXE}/Contents/Frameworks/Electron Helper NP.app/Contents/Info.plist"
+        mv "${EXE}/Contents/Frameworks/Electron Helper NP.app/Contents/MacOS/Electron Helper NP" "${EXE}/Contents/Frameworks/Electron Helper NP.app/Contents/MacOS/${NAME} Helper NP"
+        mv "${EXE}/Contents/Frameworks/Electron Helper NP.app" "${EXE}/Contents/Frameworks/${NAME} Helper NP.app"
+
+        defaults write "${EXE}/Contents/Info" "CFBundleDisplayName" -string "${NAME}"
+        defaults write "${EXE}/Contents/Info" "CFBundleExecutable" -string "${NAME}"
+        defaults write "${EXE}/Contents/Info" "CFBundleIconFile" -string "Aero.icns"
+        defaults write "${EXE}/Contents/Info" "CFBundleIdentifier" -string "com.aerofs.${NAME}"
+        defaults write "${EXE}/Contents/Info" "CFBundleName" -string "${NAME}"
+        plutil -convert xml1 "${EXE}/Contents/Info.plist"
+        mv "${EXE}/Contents/MacOS/Electron" "${EXE}/Contents/MacOS/${NAME}"
+
+        # copy icons
+        rm -rf "${EXE}/Contents/Resources/atom.icns"
+        cp "${ASSETS_DIR}/images/icons/Aero.icns" "${EXE}/Contents/Resources"
+
+        # package the executable for distribution
+        ln -sf "/Applications" "${DIST_DIR}/dmg"
+        hdiutil create -volname ${NAME} -srcfolder "${DIST_DIR}/dmg" -ov -format UDZO "${DIST_DIR}/${NAME}.dmg"
+
+        # we're done!
+        echo "Congratulations! Your new ${NAME} executable is available at: ${EXE}"
+        open "${DIST_DIR}"
+    ;;
+
+    start)
+        # start elasticsearch
+#        if ! is_running elasticsearch; then
+#            echo "Starting elasticsearch..."
+#            "${EXT_DIR}/elasticsearch/bin/elasticsearch" -Des.config="${ETC_DIR}/elasticsearch.yml" >"${LOG_DIR}/elasticsearch.out" 2>"${LOG_DIR}/elasticsearch.err" &
+#            echo $! > "${PID_DIR}/elasticsearch.pid"
+#            sleep 10
+#        fi
+
+        # start indexing files
+#        if ! is_running index; then
+#            echo "Indexing files..."
+#            "${DIR}/bin/index-files" "$HOME/AeroFS" >"${LOG_DIR}/index.out" 2>"${LOG_DIR}/index.err" &
+#            echo $! > "${PID_DIR}/index.pid"
+#        fi
+
+        # start jsx compilation
+        if ! is_running jsx; then
+            echo "Starting jsx compilation..."
+            "${BIN_DIR}/jsx" --cache-dir "${CACHE_DIR}" --extension jsx --harmony --watch "${SRC_DIR}/scripts" "${BUILD_DIR}/scripts" >"${LOG_DIR}/jsx.out" 2>"${LOG_DIR}/jsx.err" &
+            echo $! > "${PID_DIR}/jsx.pid"
+            sleep 3
+        fi
+
+        # start browserify
+        if ! is_running browserify; then
+            echo "Starting browserify..."
+            "${BIN_DIR}/watchify" "${BUILD_DIR}/scripts/app.js" -d -o "${BUILD_DIR}/scripts/bundle.js" -t brfs -v >"${LOG_DIR}/browserify.out" 2>"${LOG_DIR}/browserify.err" &
+            echo $! > "${PID_DIR}/browserify.pid"
+            sleep 3
+        fi
+
+        # start css compilation
+        if ! is_running less; then
+            echo "Starting less compilation..."
+             ${BIN_DIR}/autoless "${SRC_DIR}/styles" "${BUILD_DIR}/styles" >"${LOG_DIR}/less.out" 2>"${LOG_DIR}/less.err" &
+            echo $! > "${PID_DIR}/less.pid"
+            sleep 3
+        fi
+
+        # start electron
+        if ! is_running electron; then
+            echo "Starting electron..."
+            "${BIN_DIR}/electron" --debug=${MAIN_DEBUG_PORT} --remote-debugging-port=${RENDER_DEBUG_PORT} "${SRC_DIR}" --environment=development >"${LOG_DIR}/electron.out" 2>"${LOG_DIR}/electron.err" &
+            echo $! > "${PID_DIR}/electron.pid"
+        fi
+    ;;
+
+    debug)
+        $0 start
+        if ! is_running node-inspector; then
+            echo "Starting node-inspector..."
+            "${BIN_DIR}/node-inspector" -d ${MAIN_DEBUG_PORT} -p ${INSPECTOR_PORT} "${DIR}/main.js" >"${LOG_DIR}/node-debug.out" 2>"${LOG_DIR}/node-debug.err" &
+            echo $! > "${PID_DIR}/node-debug.pid"
+            open "http://127.0.0.1:${INSPECTOR_PORT}?debug?port=${MAIN_DEBUG_PORT}"
+        fi
+    ;;
+
+    stop)
+        stop node-inspector electron less browserify jsx
+    ;;
+
+    stop-all)
+        $0 stop
+        stop index elasticsearch
+    ;;
+
+    restart)
+        $0 stop
+        $0 start
+    ;;
+
+    status)
+        status jsx compass node-debug atom
+    ;;
+
+    *)
+        echo "Usage: $0 {install|clean|package|start|stop|stop-all|restart|status}"
+        exit 1
+    ;;
+esac
