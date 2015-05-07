@@ -23,11 +23,15 @@
     }
 
     >ul.folder {
-        height: 100%;
+        height: ~"calc(100% - 72px)";
         overflow: auto;
+        margin: 0px;
     }
 
     ul.folder {
+        list-style: none;
+        padding-left: 0px;
+
         li {
             border: 1px solid #000000;
             padding: @padding;

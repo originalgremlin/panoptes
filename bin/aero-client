@@ -251,6 +251,13 @@ case "$1" in
             sleep 3
         fi
 
+        # start http server
+        if ! is_running http; then
+            echo "Starting http server..."
+            node "${DIR}/server.js" >"${LOG_DIR}/http.out" 2>"${LOG_DIR}/http.err" &
+            echo $! > "${PID_DIR}/http.pid"
+        fi
+
         # start electron
         if ! is_running electron; then
             echo "Starting electron..."
@@ -270,7 +277,7 @@ case "$1" in
     ;;
 
     stop)
-        stop node-inspector electron less browserify jsx
+        stop node-inspector electron http less browserify jsx
     ;;
 
     stop-all)

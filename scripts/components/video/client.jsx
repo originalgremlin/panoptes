@@ -3,7 +3,7 @@
 var React = require('react'),
     VideoStore = require('../../stores/video'),
     InfoBar = require('./info-bar'),
-    Participants = require('./participants'),
+    Room = require('./room'),
     Actions = require('../../actions/video');
 
 var Client = React.createClass({
@@ -30,7 +30,7 @@ var Client = React.createClass({
         return (
             <div className="video-client">
                 <InfoBar room={ this.state.room } />
-                <Participants participants={ this.state.participants } />
+                <Room room={ this.state.room } participants={ this.state.participants } />
             </div>
         );
     },

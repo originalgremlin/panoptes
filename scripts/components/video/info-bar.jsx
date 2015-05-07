@@ -20,7 +20,7 @@ var InfoBar = React.createClass({
     render: function () {
         return (
             <form className="info-bar" onSubmit={ this.handleSubmit }>
-                <label>{ i18n.t('Room Name:') }</label>
+                <label>{ i18n.t('Room Name') }</label>
                 <input name="room" value={ this.state.room } onChange={ this.handleChange } />
                 <button type="submit">{ i18n.t('Join!') }</button>
             </form>
