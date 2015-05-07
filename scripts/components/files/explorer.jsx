@@ -12,7 +12,7 @@ var FileExplorer = React.createClass({
     },
 
     getDefaultProps: function () {
-        return { root: '/Users/barrys/AeroFS/AeroFS Team/users/barry/Panoptes' };
+        return { root: '~/AeroFS/AeroFS Team/users/barry/Panoptes' };
     },
 
     getInitialState: function () {

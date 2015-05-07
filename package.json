@@ -23,8 +23,8 @@
     "elasticsearch": "^4.0.2",
     "flux": "^2.0.3",
     "lodash": "^3.6.0",
+    "msr": "^1.2.6",
     "node-polyglot": "^0.4.1",
-    "opentok": "^2.2.5",
     "react": "^0.13.2",
     "react-router": "^0.13.2"
   },

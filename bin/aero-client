@@ -80,10 +80,6 @@ case "$1" in
             npm install
         popd >/dev/null
 
-        pushd "${NPM_DIR}" >/dev/null
-            ln -s ../build/scripts ./scripts
-        popd >/dev/null
-
         # development
         git clone --recursive https://github.com/facebook/react-devtools.git "${NPM_DIR}/react-devtools"
 
@@ -107,9 +103,9 @@ case "$1" in
 
             # create initial index and mapping
             echo "Creating files index..."
-            curl -v -XPOST 'http://localhost:9200/aerofs/' -d '{
+            curl -v -XPOST 'http://localhost:19200/aerofs/' -d '{
                 "mappings": {
-                    "file": {
+                    "video-chat": {
                         "_source": {
                             "excludes": ["file"]
                         },
@@ -136,9 +132,9 @@ case "$1" in
             echo
 
             # start indexing files
-            echo "Indexing files..."
-            #"${DIR}/bin/index-files" "$HOME/AeroFS" >"${LOG_DIR}/index.out" 2>"${LOG_DIR}/index.err" &
-            echo $! > "${PID_DIR}/index.pid"
+#            echo "Indexing files..."
+#            "${DIR}/bin/index-files" "$HOME/AeroFS" >"${LOG_DIR}/index.out" 2>"${LOG_DIR}/index.err" &
+#            echo $! > "${PID_DIR}/index.pid"
         popd >/dev/null
     ;;
 

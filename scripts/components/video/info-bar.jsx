@@ -1,6 +1,7 @@
 "use strict";
 
 var React = require('react'),
+    Actions = require('../../actions/video'),
     _ = require('lodash');
 
 var InfoBar = React.createClass({

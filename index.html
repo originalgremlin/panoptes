@@ -5,32 +5,10 @@
     <link href="build/styles/print.css" media="print" rel="stylesheet" type="text/css" />
     <!--[if IE]><link href="build/styles/ie.css" media="screen, projection" rel="stylesheet" type="text/css"/><![endif]-->
 
-    <script src='build/scripts/components/video/opentok.js'></script>
-    <script type="text/javascript">
-        // Initialize API key, session, and token...
-        // Think of a session as a room, and a token as the key to get in to the room
-        // Sessions and tokens are generated on your server and passed down to the client
-        var apiKey = "45230782";
-        var sessionId = "1_MX40NTIzMDc4Mn5-MTQzMDk0ODk2ODA5MX56SUg4SHhzTG8xUGNndlEzUjlGbmMzRDJ-fg";
-        var token = "T1==cGFydG5lcl9pZD00NTIzMDc4MiZzaWc9ODhiMWNjM2M0MWZiYzA1ZTQ1NjU2MmZlZTc4ZjRiMDQ2MjEzYWEyYzpyb2xlPXB1Ymxpc2hlciZzZXNzaW9uX2lkPTFfTVg0ME5USXpNRGM0TW41LU1UUXpNRGswT0RrMk9EQTVNWDU2U1VnNFNIaHpURzh4VUdObmRsRXpVamxHYm1NelJESi1mZyZjcmVhdGVfdGltZT0xNDMwOTQ4OTg2Jm5vbmNlPTAuOTE4MTQxMzg2NzU0NTYxOA==";
-
-        // Initialize session, set up event listeners, and connect
-        var session = OT.initSession(apiKey, sessionId);
-
-        session.on("streamCreated", function(event) {
-            session.subscribe(event.stream);
-        });
-
-        session.connect(token, function(error) {
-            var publisher = OT.initPublisher();
-            session.publish(publisher);
-        });
-    </script>
+    <script src="./node_modules/msr/MediaStreamRecorder.js"></script>
 </head>
 
 <body>
-<h1>Awesome video feed!</h1>
-<div id="myPublisherDiv"></div>
-<!--    <script src="build/scripts/app.js"></script> -->
+    <script src="build/scripts/app.js"></script>
 </body>
 </html>
