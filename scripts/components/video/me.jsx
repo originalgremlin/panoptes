@@ -56,17 +56,12 @@ var Me = React.createClass({
     },
 
     writeBlobs: function (blobs) {
-        var filename = util.format('%s-%s-%s', this.props.room, process.env.USER, new Date().toISOString());
-        this.writeBlob(blobs.audio, filename + '.wav');
-        this.writeBlob(blobs.video, filename + '.webm');
-    },
-
-    writeBlob: function (blob, filename) {
-        var data = new FormData();
-        data.append('file', blob);
+        var filename = util.format('%s-%s-%s', this.props.room, process.env.USER, new Date().toISOString()),
+            data = new FormData(),
+            request = new XMLHttpRequest();
+        data.append('audio', blobs.audio);
+        data.append('video', blobs.video);
         data.append('filename', filename);
-
-        var request = new XMLHttpRequest();
         request.open('POST', 'http://localhost:13000/upload');
         request.send(data);
     },
