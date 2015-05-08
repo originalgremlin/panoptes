@@ -1,0 +1,27 @@
+<html>
+<head></head>
+
+<body>
+    <div id='subscribersDiv'></div>
+
+    <script src='//static.opentok.com/v2/js/opentok.min.js'></script>
+    <script>
+        var apiKey = '45230782',
+            sessionId = '1_MX40NTIzMDc4Mn5-MTQzMDk0ODk2ODA5MX56SUg4SHhzTG8xUGNndlEzUjlGbmMzRDJ-fg',
+            token = 'T1==cGFydG5lcl9pZD00NTIzMDc4MiZzaWc9NTg0NGI1M2MxMjliZWJlZTU5N2RmNTA2MTJkOTNiNWMzZjNjZTU1ZTpyb2xlPXB1Ymxpc2hlciZzZXNzaW9uX2lkPTFfTVg0ME5USXpNRGM0TW41LU1UUXpNRGswT0RrMk9EQTVNWDU2U1VnNFNIaHpURzh4VUdObmRsRXpVamxHYm1NelJESi1mZyZjcmVhdGVfdGltZT0xNDMxMTA2ODU4Jm5vbmNlPTAuMTAxOTg5NjM0MzQ5ODU4OTcmZXhwaXJlX3RpbWU9MTQzMTE5MzI1OA==',
+            session = OT.initSession(apiKey, sessionId);
+
+        session.on({
+            streamCreated: function(event) {
+                session.subscribe(event.stream, 'subscribersDiv', {insertMode: 'append'});
+            }
+        });
+
+        session.connect(token, function(error) {
+            if (error) {
+                console.log(error.message);
+            }
+        });
+    </script>
+</body>
+</html>  

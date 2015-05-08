@@ -8,7 +8,4 @@ brew install cmu-pocketsphinx
 ffmpeg -y -i input.wav -ac 1 -f s16le -acodec pcm_s16le -ar 16k output.wav
 pocketsphinx_continuous -infile test/data/goforward.raw -hmm model/en-us/en-us -lm model/en-us/en-us.lm.dmp -dict model/en-us/cmudict-en-us.dict
 
-
-* 2-way video chat
-* multi-way video chat
 * BUG: switching tabs causes audio recording to fail (video, oddly enough, still works)

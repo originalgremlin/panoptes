@@ -10,6 +10,7 @@ var async = require('async'),
     app = express(),
     client = new Elasticsearch.Client({ host: 'http://localhost:19200' });
 
+app.use(express.static('assets'));
 app.use(multer({ dest: '/tmp/uploads/'}));
 
 app.post('/upload', function (req, res) {

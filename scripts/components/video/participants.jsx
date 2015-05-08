@@ -16,11 +16,16 @@ var Participants = React.createClass({
     },
 
     render: function () {
+        /*
         var participants = this.props.participants.map(function (participant) {
             return <Participant key={ participant.id } />;
         });
         return (
             <ul className="participants">{ participants }</ul>
+        );
+        */
+        return (
+            <iframe className="tokbox" frameBorder="0" src="http://localhost:13000/tokbox.html"></iframe>
         );
     }
 });
