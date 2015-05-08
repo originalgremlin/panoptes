@@ -30,7 +30,7 @@ var routes = (
         <Route name="Chat" handler={ VideoChat } />
         <Route name="Search" handler={ VideoSearch } />
         <Route name="Explore" handler={ VideoExplorer } />
-        <DefaultRoute name="Default" handler={ VideoChat } />
+        <DefaultRoute name="Default" handler={ VideoExplorer } />
     </Route>
 );
 

@@ -22,54 +22,63 @@ var Me = React.createClass({
             audio: true,
             video: true
         }, function (stream) {
-            // set state
-            self.setStateFromStream(stream);
-            // display webcam
             var video = React.findDOMNode(self.refs.video);
             video.src = window.URL.createObjectURL(stream);
-            // record
-            var recorder = self.state.recorder;
-            recorder.video = video;
-            recorder.audioChannels = 2;
-            recorder.ondataavailable = self.writeBlobs;
-            recorder.start(60 * 60 * 1000);
+            self.setState({ stream: stream });
         }, function () {
             console.error(arguments);
         });
     },
 
     componentWillUnmount: function () {
-        React.findDOMNode(this.refs.video).pause();
-        if (this.state.stream !== null) {
-            this.state.stream.stop();
-        }
-        if (this.state.recorder !== null) {
-            this.state.recorder.stop();
-        }
-    },
-
-    setStateFromStream: function (stream) {
-        this.setState({
-            stream: stream,
-            recorder: new MultiStreamRecorder(stream)
-        });
-    },
-
-    writeBlobs: function (blobs) {
-        var filename = util.format('%s-%s-%s', this.props.room, process.env.USER, new Date().toISOString()),
-            data = new FormData(),
-            request = new XMLHttpRequest();
-        data.append('audio', blobs.audio);
-        data.append('video', blobs.video);
-        data.append('filename', filename);
-        request.open('POST', 'http://localhost:13000/upload');
-        request.send(data);
+        this.pause();
+        this.state.stream.stop();
+        this.setState({ stream: null });
     },
 
     render: function () {
         return (
-            <video className="me" ref="video" autoPlay></video>
+            <form className="me">
+                <video ref="video" autoPlay></video>
+                <button type="button" onClick={ this.pause }>{ i18n.t('Pause') }</button>
+                <button type="button" onClick={ this.record }>{ i18n.t('Record') }</button>
+            </form>
         );
+    },
+
+    pause: function () {
+        if (this.state.recorder !== null) {
+            this.state.recorder.stop();
+            this.setState({ recorder: null });
+        }
+    },
+
+    record: function () {
+        if (this.state.recorder !== null) {
+            this.state.recorder.stop();
+            this.setState({ recorder: null });
+        }
+        var recorder = new MultiStreamRecorder(this.state.stream);
+        recorder.video = React.findDOMNode(this.refs.video);
+        recorder.audioChannels = 1;
+        recorder.ondataavailable = this.upload;
+        recorder.start(60 * 60 * 1000);
+        this.setState({ recorder: recorder });
+    },
+
+    upload: function (blobs) {
+        var date = new Date().toISOString(),
+            filename = util.format('%s-%s-%s', this.props.room, process.env.USER, date);
+
+        var data = new FormData();
+        data.append('audio', blobs.audio);
+        data.append('video', blobs.video);
+        data.append('date', date);
+        data.append('filename', filename);
+
+        var request = new XMLHttpRequest();
+        request.open('POST', 'http://localhost:13000/upload');
+        request.send(data);
     }
 });
 

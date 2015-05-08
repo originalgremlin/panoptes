@@ -4,6 +4,7 @@ npm-debug.log
 
 # extensions
 extensions/elasticsearch
+opsnr.stt
 
 # packaged output
 build

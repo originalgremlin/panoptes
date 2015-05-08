@@ -6,7 +6,7 @@ var Elasticsearch = require('elasticsearch'),
     Constants = require('../constants'),
     Actions = Constants.Actions,
     Events = Constants.Events,
-    client = new Elasticsearch.Client(),
+    client = new Elasticsearch.Client({ host: 'http://localhost:19200' }),
     _ = require('lodash');
 
 var data = {
@@ -60,18 +60,18 @@ Store.dispatchToken = Dispatcher.register(function (action) {
         case Actions.SEARCH_QUERY:
             client.search({
                 index: 'aerofs',
-                type: 'file',
+                type: 'video-chat',
                 body: {
                     "size": 100,
                     "query": {
                         "multi_match": {
                             "query": action.query,
-                            "fields": ["file", "path"]
+                            "fields": ["text"]
                         }
                     },
                     "highlight": {
                         "order": "score",
-                        "fields": {"file": {}}
+                        "fields": {"text": {}}
                     }
                 }
             }).then(function (response) {

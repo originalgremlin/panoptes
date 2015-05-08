@@ -11,7 +11,7 @@ var Highlights = React.createClass({
     },
 
     render: function () {
-        var highlights = (this.props.highlights.file || []).map(function (highlight) {
+        var highlights = (this.props.highlights.text || []).map(function (highlight) {
             return <li className="highlight" key={ this.md5(highlight) } dangerouslySetInnerHTML={{ __html: highlight }} />;
         }, this);
         return (

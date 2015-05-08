@@ -106,23 +106,9 @@ case "$1" in
             curl -v -XPOST 'http://localhost:19200/aerofs/' -d '{
                 "mappings": {
                     "video-chat": {
-                        "_source": {
-                            "excludes": ["file"]
-                        },
                         "properties": {
-                            "file": {
-                                "type": "attachment",
-                                "path": "full",
-                                "fields": {
-                                    "file": {
-                                        "type": "string",
-                                        "term_vector": "with_positions_offsets",
-                                        "store": true
-                                    }
-                                }
-                            },
+                            "text": { "type": "string", "term_vector": "with_positions_offsets", "store": true },
                             "createdAt": { "type": "date", "format" : "dateOptionalTime" },
-                            "modifiedAt": { "type": "date", "format" : "dateOptionalTime" },
                             "path": { "type": "string" },
                             "size": { "type": "long" }
                         }
