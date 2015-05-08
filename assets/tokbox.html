@@ -1,7 +1,14 @@
 <html>
-<head></head>
+<head>
+    <style>
+    #myPublisherDiv {
+        display: none;
+    }
+    </style>
+</head>
 
 <body>
+    <div id='myPublisherDiv'></div>
     <div id='subscribersDiv'></div>
 
     <script src='//static.opentok.com/v2/js/opentok.min.js'></script>
@@ -20,6 +27,8 @@
         session.connect(token, function(error) {
             if (error) {
                 console.log(error.message);
+            } else {
+                session.publish('myPublisherDiv', { width: 320, height: 240 });
             }
         });
     </script>
